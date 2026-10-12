@@ -1,0 +1,54 @@
+
+name: Deploy ASMAWORLD
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download repository
+        uses: actions/checkout@v4
+
+      - name: Extract ASMAWORLD ZIP
+        run: |
+          mkdir -p public
+          ZIP_FILE=$(find . -maxdepth 1 -type f -iname "*.zip" | head -n 1)
+          if [ -n "$ZIP_FILE" ]; then
+            unzip -o "$ZIP_FILE" -d public
+          else
+            cp index.html public/ 2>/dev/null || true
+            cp style.css public/ 2>/dev/null || true
+            cp app.js public/ 2>/dev/null || true
+          fi
+          if [ ! -f public/index.html ]; then
+            FOUND=$(find public -name index.html -print -quit)
+            if [ -n "$FOUND" ]; then
+              DIR=$(dirname "$FOUND")
+              cp -r "$DIR"/. public/
+            fi
+          fi
+          test -f public/index.html
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+      - name: Publish site
+        uses: actions/deploy-pages@v4
